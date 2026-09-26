@@ -45,52 +45,15 @@
 
 ## 快速开始
 
-整套生命周期 = 手动,daemon 不注册 cron / systemd / supervisor。
+主仓已经集成 srcradar-mcp-server(默认不安装,需要在主仓 `./install.sh`
+交互式 checklist 里手动勾选 `public/mcp-server`)。安装、启动、停止、状态
+查询、日志查看等所有运维动作,均跟随主仓 dispatcher,详见
+[`srcradar/README.md` §快速开始](https://github.com/usdagfhjkda/srcradar#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
 
-两种入口,任选其一:
+本仓库仅在以下场景使用 `./install.sh` / `./start.sh` 等独立脚本:
 
-#### A. 新用户(从 srcradar 主仓根目录 install.sh 勾选)
-
-主仓 `./install.sh --yes` 的交互式 checklist 已经把 `public/mcp-server`
-列为可选模块(描述:"MCP daemon (streamable-http /mcp, 127.0.0.1,
-空闲自杀);默认不勾")。勾选该项,主仓 dispatcher 会自动部署 / 启动。
-
-后续管理(均在主仓根目录跑):
-
-```bash
-./srcradar srcradar-mcp-server install --yes  # 老用户独立 install(已存在 daemon 则早退)
-./srcradar srcradar-mcp-server start          # setsid 启动 + 轮询 /health
-./srcradar srcradar-mcp-server status         # PID + /health + 最近日志
-./srcradar srcradar-mcp-server stop [--dryrun]   # 真 SIGTERM 前先看一眼
-./srcradar srcradar-mcp-server uninstall      # 卸 daemon
-```
-
-#### B. 老用户 / 独立部署(直接进本仓库跑)
-
-```bash
-./install.sh --yes   # 注册 daemon + 写 PID
-./start.sh           # setsid 启动 + 轮询 /health
-./status.sh          # PID + /health + 最近日志
-./stop.sh            # SIGTERM(可选 --dryrun 先看一眼)
-./uninstall.sh       # 卸 daemon
-```
-
-`install.sh --yes` 的行为:
-
-1. PID 文件有活进程 → 早退 "already running"
-2. 端口 `8764` 被占(其他 mcp daemon) → 早退,不抢
-3. 否则 `setsid nohup python3 daemon.py --http` + 写 PID + 轮询 `/health`
-
-`stop.sh --dryrun` 留个开关,真 `SIGTERM` 前先看一眼。
-
-`status.sh` 输出样例(daemon 在跑时):
-
-```
-pid=12345 port=8764 health=200 ({"status":"ok","daemon":"srcradar-mcp"})
-log_tail: logs/server.log (last 10 lines shown by tail -n 10)
-```
-
-`status.sh` 在 daemon 不在时输出 `pid=<missing> port=8764 (free)` + 提示 `start.sh`。
+- 从独立仓(非主仓子树)克隆 / 部署
+- operator 手动验证 daemon 行为而不走主仓 dispatcher
 
 ### SSH tunnel play-book
 
