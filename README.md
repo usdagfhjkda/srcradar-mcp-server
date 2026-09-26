@@ -1,6 +1,6 @@
 # srcradar-mcp-server —— srcradar 的 MCP 适配层
 
-> 把 srcradar 主仓的 15 个工具(13 个只读转发 + 2 个 stage 原语)用 MCP 协议的 streamable-http transport 暴露出来,本地 agent 直接通过 HTTP 调,不再每次 SSH 上 v1 开新会话。
+> 把 srcradar 主仓的 15 个工具(转发 srcradar 子命令 + 2 个 stage 原语)用 MCP 协议的 streamable-http transport 暴露出来,本地 agent 直接通过 HTTP 调,不再每次 SSH 上 vps 开新会话。
 
 <p align="left">
   <a href="https://github.com/usdagfhjkda/srcradar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
@@ -37,7 +37,7 @@
 
 - **协议契约**:`streamable-http` 单 endpoint `POST /mcp` 接 MCP `tools.invoke`,JSON-RPC 2.0 over HTTP(SSE 仅作 Accept 协商,默认 `application/json`);`GET /health` 给 SSH 隧道后的健康探针
 - **端口契约**:daemon **只绑 `127.0.0.1:8764`**,loopback 即信任;远程调用一律走 SSH 隧道,daemon 不做 OAuth / token / session id
-- **数据契约**:15 个工具(13 个 `auth: none` 只读 + 2 个 `auth: e1-confirmed` 写操作)按 `whitelist.json` 转发到同机 `./srcradar <subcmd>` 或执行 stage 原语落盘;**daemon 不持有 srcradar SQLite**,只读 `whitelist.json` + `tools_schema.py` + 自家 `logs/`
+- **数据契约**:15 个工具(`auth: none` 转发 srcradar 子命令 + 2 个 `auth: e1-confirmed` stage 原语)按 `whitelist.json` 转发到同机 `./srcradar <subcmd>` 或执行 stage 原语落盘;**daemon 不持有 srcradar SQLite**,只读 `whitelist.json` + `tools_schema.py` + 自家 `logs/`
 
 **主从关系**:srcradar 主仓是数据与业务源,本模块只是它的"远程面板"。
 
@@ -47,15 +47,32 @@
 
 整套生命周期 = 手动,daemon 不注册 cron / systemd / supervisor。
 
-```bash
-# 在 v1 上,从主仓根跑一次性安装
-bash modules/public/srcradar-mcp-server/install.sh --yes
+两种入口,任选其一:
 
-# 启动 / 状态 / 停 / 卸
-bash modules/public/srcradar-mcp-server/start.sh
-bash modules/public/srcradar-mcp-server/status.sh
-bash modules/public/srcradar-mcp-server/stop.sh
-bash modules/public/srcradar-mcp-server/uninstall.sh
+#### A. 新用户(从 srcradar 主仓根目录 install.sh 勾选)
+
+主仓 `./install.sh --yes` 的交互式 checklist 已经把 `public/mcp-server`
+列为可选模块(描述:"MCP daemon (streamable-http /mcp, 127.0.0.1,
+空闲自杀);默认不勾")。勾选该项,主仓 dispatcher 会自动部署 / 启动。
+
+后续管理(均在主仓根目录跑):
+
+```bash
+./srcradar srcradar-mcp-server install --yes  # 老用户独立 install(已存在 daemon 则早退)
+./srcradar srcradar-mcp-server start          # setsid 启动 + 轮询 /health
+./srcradar srcradar-mcp-server status         # PID + /health + 最近日志
+./srcradar srcradar-mcp-server stop [--dryrun]   # 真 SIGTERM 前先看一眼
+./srcradar srcradar-mcp-server uninstall      # 卸 daemon
+```
+
+#### B. 老用户 / 独立部署(直接进本仓库跑)
+
+```bash
+./install.sh --yes   # 注册 daemon + 写 PID
+./start.sh           # setsid 启动 + 轮询 /health
+./status.sh          # PID + /health + 最近日志
+./stop.sh            # SIGTERM(可选 --dryrun 先看一眼)
+./uninstall.sh       # 卸 daemon
 ```
 
 `install.sh --yes` 的行为:
@@ -80,16 +97,16 @@ log_tail: logs/server.log (last 10 lines shown by tail -n 10)
 SSH tunnel 由**用户**手动开,不让 client 触发:
 
 ```bash
-# 本地一条 LocalForward,把 v1:8764 → 本机 127.0.0.1:8764
+# 本地一条 LocalForward,把 daemon 机:8764 → 本机 127.0.0.1:8764
 ssh -fN -o ExitOnForwardFailure=yes \
-    -L 8764:127.0.0.1:8764 v1
+    -L 8764:127.0.0.1:8764 <daemon-host>
 
 # 验证
 curl -s http://127.0.0.1:8764/health
 # 期望: {"status":"ok","daemon":"srcradar-mcp"}
 ```
 
-tunnel 之前要确保 daemon 在 v1 上 `/health` 已经 200;daemon 没起来,tunnel 连过去一样 404 / 连不上。`status.sh` 一行报当前 PID 状态 + `/health` + 最近日志。
+tunnel 之前要确保 daemon 在 daemon 机上 `/health` 已经 200;daemon 没起来,tunnel 连过去一样 404 / 连不上。`status.sh` 一行报当前 PID 状态 + `/health` + 最近日志。
 
 ---
 
@@ -97,7 +114,7 @@ tunnel 之前要确保 daemon 在 v1 上 `/health` 已经 200;daemon 没起来,t
 
 ```
 ┌──────────────────┐         ┌────────────────────────────────────────────┐
-│  MCP client      │         │  v1 (loopback 127.0.0.1)                   │
+│  MCP client      │         │  daemon host (loopback 127.0.0.1)          │
 │  (agent / IDE /  │         │                                            │
 │   harness / LLM) │         │  ┌──────────────────────────┐              │
 │                  │  POST   │  │  daemon.py (streamable-   │              │
@@ -146,7 +163,7 @@ tunnel 之前要确保 daemon 在 v1 上 `/health` 已经 200;daemon 没起来,t
 
 ## 工具清单
 
-15 个工具,按 `auth` 与读 / 写分类。**实际数量以本仓库 `whitelist.json` 为准**。
+15 个工具,按 `auth` 分类。**实际数量以本仓库 `whitelist.json` 为准**。
 
 | 工具 | 类型 | handler 形态 | auth | 一句话 |
 |---|---|---|---|---|
@@ -279,13 +296,13 @@ body = {
 - **不做 OAuth / token 校验 / subscriptions/listen / MRTR / Stream resume**。MCP spec 删了的全部不实现
 - **空逻辑 / 不留指纹**:daemon log 不打客户名 / token / cookie / 真实路径;上游 access log 一样按 http 模块的"超长 args hash 化"做,不暴露 operational fingerprint
 - **不创建 cron / systemd / supervisor**。生命周期 = 手动 `--start` + (可选)空闲自杀;daemon 当前不动;若未来要加 idle-exit,在 daemon 内部加,不在这里管
-- **不引入 v1 上未装的依赖**(只用 stdlib)
+- **不引入 daemon 机上未装的依赖**(只用 stdlib)
 
 ---
 
 ## 上游致谢与 License
 
-本模块自身只依赖 Python stdlib(`http.server` / `json` / `socketserver` / `subprocess` / `uuid` / `hashlib`),不引入 v1 上未装的第三方包。能力由下列上游支撑:
+本模块自身只依赖 Python stdlib(`http.server` / `json` / `socketserver` / `subprocess` / `uuid` / `hashlib`),不引入 daemon 机上未装的第三方包。能力由下列上游支撑:
 
 - **MCP 协议** — [modelcontextprotocol/specification](https://github.com/modelcontextprotocol/specification),MCP 本模块按其 `streamable-http` transport 实现
 - **srcradar 主仓** — [`usdagfhjkda/srcradar`](https://github.com/usdagfhjkda/srcradar),本模块是它的 MCP 适配层,所有业务数据由主仓持有
@@ -316,42 +333,6 @@ body = {
 - **TLS 终止** — 由 SSH 隧道自带 channel security 兜
 - **systemd / cron / supervisor** — 生命周期 = 手动 `--start` / `stop.sh` / `status.sh`
 - **idle-exit** — 当前未实现,若未来加,在 daemon 内部加,README 与 install.sh 同步更新
-
----
-
-## 已知问题 / 限制
-
-按"已定位 / 已缓解 / 未根治"三档排列:
-
-### 1. loopback only(只绑 `127.0.0.1:8764`) ✅ 已定位,设计如此
-
-daemon 不做端口校验,操作员若手动改 `0.0.0.0` 启动脚本不会拦 — 但 README / `install.sh` / `start.sh` 全部不引导、不宣传;跨机器调用一律 SSH 隧道(见 §快速开始)。**风险姿态**:信任 daemon 入口的人为配置。
-
-### 2. 不做 OAuth / token 校验 / session id ✅ 已定位,设计如此
-
-见 §约束 与 §能力边界。**风险姿态**:loopback 上有其他本地用户能读 `127.0.0.1:8764`,等同共享 daemon 权限;解决方案 = 不要把 loopback 暴露给多用户主机。
-
-### 3. 不创建 cron / systemd / supervisor ✅ 已定位,设计如此
-
-生命周期 = 手动 `start.sh` / `stop.sh` / `status.sh` / `uninstall.sh`。daemon 跑挂了操作员自己拉起来;**未来若加 idle-exit,在 daemon 内部加,不在这里管**。
-
-### 4. 不引入 v1 上未装的依赖(只用 stdlib) ✅ 已定位,设计如此
-
-`daemon.py` 全文不 `import requests` / `import fastapi` 等 v1 上未确认装的包。如果未来 srcradar 主仓开始分 `pip install` 给 v1,本模块单独评估,**当前不破例**。
-
-### 5. daemon log 不打客户名 / token / cookie / 真实路径 ✅ 已定位,设计如此
-
-`logs/server.log` 走 `print` / `sys.stderr`,不上 access log 结构化字段;上游 access log 一样按 http 模块的"超长 args hash 化"做,不暴露 operational fingerprint。**风险姿态**:故障排查时 operator 看不到 client 标识,只能靠 client 自报 upload_id / 业务名。
-
-**何时触发**:永远是默认行为 — daemon 启动后所有 request handler 都走"打 hash 不打原值"路径,无 opt-out flag。
-**何时不触发**:debug 模式也不开 — 排查 staging 失败请用 `_sweep_staged()` + 主仓 SQLite 直查,不要试图从 daemon log 反推 client 行为。
-
-### 6. stage 配额(单 payload 设上限,TTL 默认 24h) ✅ 已定位,设计如此
-
-`stage_file` / `stage_dir` 单次 payload 设上限(由 daemon 常量定义);`~/.cache/srcradar-mcp/staged/` 内 `<id>` 超 TTL(默认 24h)在 daemon 启动时被 `_sweep_staged()` 清掉。**超出上限返回 JSON-RPC 错误**,**TTL 到期被 sweep 静默清掉**。
-
-**何时触发**:每次 `daemon.py` `__init__`;`_staging_ref` 命中也会立即清。
-**何时不触发**:`tools.invoke` 主流程内不做 quota 计数,只 daemon 启动时清;若 operator 想手清,直接调 `Daemon._sweep_staged()`。
 
 ---
 
