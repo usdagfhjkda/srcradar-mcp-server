@@ -13,9 +13,9 @@
 
 <br>
 
-**srcradar-mcp-server** 是 srcradar 主仓的 **MCP 适配层**,不替代主仓、不持有业务数据。daemon 把 MCP `tools.invoke` 消息按 `whitelist.json` 转发到本机 `./srcradar <subcmd>`,或执行两个 stage 原语把 client 字节落到 daemon 侧的 `~/.cache/srcradar-mcp/staged/`,把"绝对路径"返还给吃路径的 srcradar 子命令(例如 `add_business -s seed.tsv` / `add_business -i input_dir/`)。
+**面向 agent 的持久化业务级攻击面知识库**。把 srcradar 的"业务名 → 法律实体图谱 → 主动测绘资产(小程序/公众号 + Web 范围 → 子域名/端口/指纹) → 每日增量 diff"通过 MCP 协议暴露出来,让任何 agent 在攻击前直接拿到已知资产清单与最新变动 —— 跳过信息收集,从已识别的目标开始。
 
-详细合规与上游说明以 **srcradar 主仓** 为准,见下方 §使用前提与合规。
+**srcradar-mcp-server** 是 srcradar 主仓的 **MCP 适配层**,不替代主仓、不持有业务数据。daemon 把 MCP `tools.invoke` 消息按 `whitelist.json` 转发到本机 `./srcradar <subcmd>`,或执行两个 stage 原语把 client 字节落到 daemon 侧的 `~/.cache/srcradar-mcp/staged/`,把"绝对路径"返还给吃路径的 srcradar 子命令(例如 `add_business -s seed.tsv` / `add_business -i input_dir/`)。
 
 ---
 
@@ -55,23 +55,7 @@
 - 从独立仓(非主仓子树)克隆 / 部署
 - operator 手动验证 daemon 行为而不走主仓 dispatcher
 
-### SSH tunnel play-book
-
-SSH tunnel 由**用户**手动开,不让 client 触发:
-
-```bash
-# 本地一条 LocalForward,把 daemon 机:8764 → 本机 127.0.0.1:8764
-ssh -fN -o ExitOnForwardFailure=yes \
-    -L 8764:127.0.0.1:8764 <daemon-host>
-
-# 验证
-curl -s http://127.0.0.1:8764/health
-# 期望: {"status":"ok","daemon":"srcradar-mcp"}
-```
-
-tunnel 之前要确保 daemon 在 daemon 机上 `/health` 已经 200;daemon 没起来,tunnel 连过去一样 404 / 连不上。`status.sh` 一行报当前 PID 状态 + `/health` + 最近日志。
-
----
+-
 
 ## 架构
 
