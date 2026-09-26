@@ -1,0 +1,83 @@
+{
+  "tools": [
+    {
+      "name": "stage_file",
+      "path": "_stage_file",
+      "auth": "e1-confirmed",
+      "_handler": "stage_file",
+      "_doc": "Write client-supplied bytes (stdin | base64 | file_path+base64) to ~/.cache/srcradar-mcp/staged/<16-hex>.<ext>; returns staged_path + upload_id for downstream tools (e.g. add_business -s). Promoted to e1-confirmed so Hermes trust:untrusted surfaces the native approval gate (stage writes to disk)."
+    },
+    {
+      "name": "stage_dir",
+      "path": "_stage_dir",
+      "auth": "e1-confirmed",
+      "_handler": "stage_dir",
+      "_doc": "Materialise a tar.gz (base64) or entries-list into ~/.cache/srcradar-mcp/staged/<16-hex>/; returns staged_dir + upload_id for downstream tools (e.g. add_business -i). Promoted to e1-confirmed so Hermes trust:untrusted surfaces the native approval gate (stage writes to disk)."
+    },
+    {
+      "name": "db.read_business_summary",
+      "path": "db/read_business_summary.py",
+      "auth": "none"
+    },
+    {
+      "name": "db.read_subdomains",
+      "path": "db/read_subdomains.py",
+      "auth": "none"
+    },
+    {
+      "name": "db.read_open_ports",
+      "path": "db/read_open_ports.py",
+      "auth": "none"
+    },
+    {
+      "name": "db.read_companies",
+      "path": "db/read_companies.py",
+      "auth": "none"
+    },
+    {
+      "name": "db.read_diff",
+      "path": "db/read_diff.py",
+      "auth": "none"
+    },
+    {
+      "name": "db.read_single_subdomain",
+      "path": "db/read_single_subdomain.py",
+      "auth": "none"
+    },
+    {
+      "name": "dispatcher.list",
+      "path": "./srcradar --list",
+      "auth": "none"
+    },
+    {
+      "name": "dispatcher.run_confirmed",
+      "path": "./srcradar -- <args>",
+      "auth": "e1-confirmed"
+    },
+    {
+      "name": "manage.add_business",
+      "path": "./srcradar manage add_business",
+      "auth": "e1-confirmed"
+    },
+    {
+      "name": "manage.set_config",
+      "path": "./srcradar manage set_config",
+      "auth": "e1-confirmed"
+    },
+    {
+      "name": "daily.run_one_business",
+      "path": "./srcradar daily run_one_business",
+      "auth": "e1-confirmed"
+    },
+    {
+      "name": "ymicp.icp_mapp_query",
+      "path": "./srcradar ymicp icp_mapp_query",
+      "auth": "none"
+    },
+    {
+      "name": "daily.run_dashboard_watchdog",
+      "path": "./srcradar daily dashboard_watchdog",
+      "auth": "e1-confirmed"
+    }
+  ]
+}
