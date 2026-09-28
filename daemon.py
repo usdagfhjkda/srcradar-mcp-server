@@ -368,19 +368,12 @@ def _q_read_companies(conn, args):
 
 def _q_read_diff(conn, args):
     name = args.get("business")
-    from_run = args.get("from")
-    to_run = args.get("to")
-    if not (name and from_run and to_run):
-        return {"error": {"code": -32602, "message": "missing required --business/--from/--to"}}
+    if not name:
+        return {"error": {"code": -32602, "message": "missing required --business"}}
     limit = _clamp_limit(args)
     biz_id, biz_name = _lookup_business_id(conn, name)
     if biz_id is None:
         return {"found": False, "business_name": name, "rows": []}
-
-    run_rows = conn.execute(
-        "SELECT run_id, started_at, finished_at FROM run_markers WHERE run_id IN (?, ?) ORDER BY started_at",
-        (from_run, to_run),
-    ).fetchall()
 
     rows = conn.execute(
         "SELECT subdomain, port, change_type, last_seen, is_active "
@@ -392,11 +385,6 @@ def _q_read_diff(conn, args):
     return {
         "found": True,
         "business": {"id": biz_id, "business_name": biz_name},
-        "from_run": from_run,
-        "to_run": to_run,
-        "run_markers": [
-            {"run_id": r[0], "started_at": r[1], "finished_at": r[2]} for r in run_rows
-        ],
         "row_count": len(rows),
         "limit": limit,
         "rows": [
