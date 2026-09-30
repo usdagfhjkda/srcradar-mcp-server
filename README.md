@@ -13,7 +13,7 @@
 
 <br>
 
-**面向 agent 的持久化业务级攻击面知识库**。把 srcradar 的"业务名 → 法律实体图谱 → 主动测绘资产(小程序/公众号 + Web 范围 → 子域名/端口/指纹) → 每日增量 diff"通过 MCP 协议暴露出来,让任何 agent 在攻击前直接拿到已知资产清单与最新变动 —— 跳过信息收集,从已识别的目标开始。
+**面向 agent 的持久化业务级攻击面知识库**。把 srcradar 的"业务名 → 法律实体图谱 → 主动测绘资产(小程序/公众号 + Web 范围 → 子域名/端口/指纹) → 每日增量 diff"通过 MCP 协议暴露出来,让任何 agent 无需重新扫描即可直接拿到已知资产清单与最新变动 —— 跳过信息收集,从已识别的目标开始。
 
 **srcradar-mcp-server** 是 srcradar 主仓的 **MCP 适配层**,不替代主仓、不持有业务数据。daemon 把 MCP `tools.invoke` 消息按 `whitelist.json` 转发到本机 `./srcradar <subcmd>`,或执行两个 stage 原语把 client 字节落到 daemon 侧的 `~/.cache/srcradar-mcp/staged/`,把"绝对路径"返还给吃路径的 srcradar 子命令(例如 `add_business -s seed.tsv` / `add_business -i input_dir/`)。
 
@@ -50,12 +50,16 @@
 查询、日志查看等所有运维动作,均跟随主仓 dispatcher,详见
 [`srcradar/README.md` §快速开始](https://github.com/usdagfhjkda/srcradar#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
 
+### 服务端
+
 本仓库仅在以下场景使用 `./install.sh` / `./start.sh` 等独立脚本:
 
 - 从独立仓(非主仓子树)克隆 / 部署
 - operator 手动验证 daemon 行为而不走主仓 dispatcher
 
--
+### 客户端
+
+本仓是 daemon,client 端约定见 [`srcradar-mcp-skill` §快速开始](https://github.com/usdagfhjkda/srcradar-mcp-skill#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
 
 ## 架构
 
