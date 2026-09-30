@@ -47,6 +47,10 @@
 
 ### 服务端
 
+主仓已经集成 srcradar-mcp-server(默认不安装,需要在主仓 `./install.sh`
+交互式 checklist 里手动勾选 `public/mcp-server`)。安装、启动、停止、状态
+查询、日志查看等所有运维动作,均跟随主仓 dispatcher,详见
+[`srcradar/README.md` §快速开始](https://github.com/usdagfhjkda/srcradar#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
 本仓库仅在以下场景使用 `./install.sh` / `./start.sh` 等独立脚本:
 
 - 从独立仓(非主仓子树)克隆 / 部署
@@ -55,10 +59,6 @@
 ### 客户端
 
 本仓是 daemon,client 端约定见 [`srcradar-mcp-skill` §快速开始](https://github.com/usdagfhjkda/srcradar-mcp-skill#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
-主仓已经集成 srcradar-mcp-server(默认不安装,需要在主仓 `./install.sh`
-交互式 checklist 里手动勾选 `public/mcp-server`)。安装、启动、停止、状态
-查询、日志查看等所有运维动作,均跟随主仓 dispatcher,详见
-[`srcradar/README.md` §快速开始](https://github.com/usdagfhjkda/srcradar#%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B)。
 
 ## 架构
 
